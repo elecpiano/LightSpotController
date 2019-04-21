@@ -2,26 +2,17 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using System.Timers;
 using System.Windows.Threading;
 
 namespace LightSpotController
 {
-    /// <summary>
-    /// MainWindow.xaml 的交互逻辑
-    /// </summary>
     public partial class MainWindow : Window
     {
         #region lifecycle
@@ -91,7 +82,7 @@ namespace LightSpotController
             //}
             else if (e.Key == Key.Enter)
             {
-                GenerateScript();
+                AddScriptLine();
             }
             else if (e.Key == Key.Back)
             {
@@ -172,47 +163,22 @@ namespace LightSpotController
 
         #endregion
 
-        #region duration
-
-        double SpotDuration = 1.0; // unit in 0.1 second
-
-        private void UpdateDuration(double delta)
-        {
-            if (IsEditMode == false)
-                return;
-
-            if ((SpotDuration + delta * MoveSpeed) < 0.1)
-            {
-                return;
-            }
-            SpotDuration += delta * MoveSpeed;
-            SpotDuration = Math.Round(SpotDuration, 1);
-
-            DurationText.Text = SpotDuration.ToString();
-        }
-
-        #endregion
-
         #region script
 
         string Script = "";
-        List<string> ScriptList = new List<string>();
-        List<string> DurationList = new List<string>();
+        List<ScriptLine> ScriptList = new List<ScriptLine>();
 
-        private void GenerateScript()
+        private void AddScriptLine()
         {
             if (IsEditMode == false)
                 return;
 
-            SpotDuration = Player.Position.TotalSeconds - SpotDuration - MOVE_DURATION.TotalSeconds;
+            ScriptLine newLine = new ScriptLine();
 
-            string newLine = "";
-
-            newLine += LightSpotX.ToString() + ",";
-            newLine += LightSpotY.ToString() + ",";
-            newLine += LightSpotSize.ToString() + ",";
-            newLine += SpotDuration.ToString() + ",";
-            newLine += System.Environment.NewLine;
+            newLine.X = LightSpotX;
+            newLine.Y = LightSpotY;
+            newLine.Size = LightSpotSize;
+            newLine.Time = Media.Position.TotalSeconds;
 
             ScriptList.Add(newLine);
             PreviewScript();
@@ -237,7 +203,11 @@ namespace LightSpotController
             string script = "";
             foreach (var line in ScriptList)
             {
-                script += line;
+                script += line.X.ToString() + ",";
+                script += line.Y.ToString() + ",";
+                script += line.Size.ToString() + ",";
+                script += line.Time.ToString() + ",";
+                script += System.Environment.NewLine;
             }
             ScriptPreviewText.Text = script;
         }
@@ -254,9 +224,25 @@ namespace LightSpotController
 
                 ScriptList.Clear();
                 string[] separator = { System.Environment.NewLine };
-                var lines = Script.Split(separator, StringSplitOptions.RemoveEmptyEntries);
-                foreach (var line in lines)
+                var lineStrArray = Script.Split(separator, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var lineStr in lineStrArray)
                 {
+                    var line = new ScriptLine();
+
+                    int index = 0;
+                    var arg_1 = lineStr.Substring(index, lineStr.IndexOf(",", index) - index);
+                    index += arg_1.Length + 1;
+                    var arg_2 = lineStr.Substring(index, lineStr.IndexOf(",", index) - index);
+                    index += arg_2.Length + 1;
+                    var arg_3 = lineStr.Substring(index, lineStr.IndexOf(",", index) - index);
+                    index += arg_3.Length + 1;
+                    var arg_4 = lineStr.Substring(index, lineStr.IndexOf(",", index) - index);
+
+                    line.X = Double.Parse(arg_1);
+                    line.Y = Double.Parse(arg_2);
+                    line.Size = Double.Parse(arg_3);
+                    line.Time = Double.Parse(arg_4);
+
                     ScriptList.Add(line);
                 }
             }
@@ -267,7 +253,11 @@ namespace LightSpotController
             Script = "";
             foreach (var line in ScriptList)
             {
-                Script += line;
+                Script += line.X.ToString() + ",";
+                Script += line.Y.ToString() + ",";
+                Script += line.Size.ToString() + ",";
+                Script += line.Time.ToString() + ",";
+                Script += System.Environment.NewLine;
             }
 
             System.Windows.Forms.SaveFileDialog sfd = new System.Windows.Forms.SaveFileDialog();
@@ -293,12 +283,15 @@ namespace LightSpotController
         ScaleAnimation Scaler = new ScaleAnimation(0);
         FadeAnimation Fader = new FadeAnimation();
         FadeAnimation Fader2 = new FadeAnimation();
-        Stack<string> ScriptQueue = null;
-        TimeSpan MOVE_DURATION = TimeSpan.FromSeconds(0.8);
-        TimeSpan FADE_DURATION = TimeSpan.FromSeconds(0.4);
+        Stack<ScriptLine> ScriptQueue = new Stack<ScriptLine>();
+        TimeSpan MOVE_DURATION = TimeSpan.FromSeconds(0.6);
+        TimeSpan FADE_DURATION_1 = TimeSpan.FromSeconds(0.3);
+        TimeSpan FADE_DURATION_2 = TimeSpan.FromSeconds(0.3);
 
         SineEase Ease = new SineEase() { EasingMode = EasingMode.EaseOut };
         bool IsPlaying = false;
+
+        ScriptLine NextScriptLine = null;
 
         private void PausePlay()
         {
@@ -308,27 +301,27 @@ namespace LightSpotController
             {
                 if (IsPlaying)
                 {
-                    if (Player != null)
-                        Player.Play();
+                    if (Media != null)
+                        Media.Play();
                 }
                 else
                 {
-                    if (Player != null)
-                        Player.Pause();
+                    if (Media != null)
+                        Media.Pause();
                 }
             }
             else
             {
                 if (IsPlaying)
                 {
-                    if (Player != null)
-                        Player.Play();
+                    if (Media != null)
+                        Media.Play();
                     PlayScript();
                 }
                 else
                 {
-                    if (Player != null)
-                        Player.Stop();
+                    if (Media != null)
+                        Media.Stop();
                     StopScript();
                 }
             }
@@ -338,7 +331,7 @@ namespace LightSpotController
         {
             ResetSpot();
 
-            ScriptQueue = new Stack<string>();
+            ScriptQueue.Clear();
             int index = ScriptList.Count - 1;
             while (index >= 0)
             {
@@ -346,40 +339,36 @@ namespace LightSpotController
                 index--;
             }
 
-            PlayNextScript();
-            //StartTick();
+            NextScriptLine = ScriptQueue.Pop();
+
+            StartTick();
         }
 
-        private void PlayNextScript()
+        private void PlayNextScriptLine()
         {
             if (ScriptList.Count == 0)
             {
                 return;
             }
 
-            if (ScriptQueue.Count == 0)
+            if (NextScriptLine != null)
             {
-                PlayScript();
-                return;
+                LightSpotX = NextScriptLine.X;
+                LightSpotY = NextScriptLine.Y;
+                LightSpotSize = NextScriptLine.Size;
+
+                PlayMove();
             }
 
-            string line = ScriptQueue.Pop();
-
-            int index = 0;
-            var arg_1 = line.Substring(index, line.IndexOf(",", index) - index);
-            index += arg_1.Length + 1;
-            var arg_2 = line.Substring(index, line.IndexOf(",", index) - index);
-            index += arg_2.Length + 1;
-            var arg_3 = line.Substring(index, line.IndexOf(",", index) - index);
-            index += arg_3.Length + 1;
-            var arg_4 = line.Substring(index, line.IndexOf(",", index) - index);
-
-            LightSpotX = Double.Parse(arg_1);
-            LightSpotY = Double.Parse(arg_2);
-            LightSpotSize = Double.Parse(arg_3);
-            SpotDuration = Double.Parse(arg_4);
-
-            PlayMove();
+            if (ScriptQueue.Count > 0)
+            {
+                NextScriptLine = ScriptQueue.Pop();
+            }
+            else
+            {
+                NextScriptLine = null;
+                //PlayScript();
+            }
         }
 
         private void StopScript()
@@ -395,65 +384,71 @@ namespace LightSpotController
 
         private void PlayMove()
         {
-            DurationText.Text = "";
-
-            Mover.InstanceMoveTo(LightSpot, LightSpotX, LightSpotY, MOVE_DURATION, Ease, 
-                (element)=> PlayHover());
+            Mover.InstanceMoveTo(LightSpot, LightSpotX, LightSpotY, MOVE_DURATION, Ease, null);
+                //(element)=> PlayHover());
 
             var scaleFactor = LightSpotSize / 100.0;
             Scaler.InstanceScaleTo(LightSpot2, scaleFactor, scaleFactor, MOVE_DURATION, null);
 
-            Fader.InstanceFade(LightSpot, 1.0, 01, FADE_DURATION, true, null);
-        }
-
-        private void PlayHover()
-        {
-            TimeSpan duration = TimeSpan.FromSeconds(SpotDuration);
-
-            ElapsedTick = 0;
-            DurationText.Text = SpotDuration.ToString();
-
-            //Fader2.InstanceFade(LightSpot2, 1.0, 1.0, duration, false,
-            //    (e) => PlayNextScript());
-
-            Mover.InstanceMoveTo(LightSpot, LightSpotX, LightSpotY, duration, null,
-                (element) => PlayNextScript());
+            Fader.InstanceFade(LightSpot, 1.0, 0.5, FADE_DURATION_1, false, 
+                                            element=> {
+                                                Fader.InstanceFade(LightSpot, 0.5, 1.0, FADE_DURATION_2, false, null);
+                                            });
         }
 
         #endregion
 
         #region tick
 
-        DispatcherTimer TickTimer = null;
-        TimeSpan TICK_INTERVAL = TimeSpan.FromSeconds(0.05);
-        double ElapsedTick = 0;
+        TimeSpan TICK_INTERVAL = TimeSpan.FromSeconds(0.01);
+        double TimeElapsed = 0;
+        Timer timer = null;
+        double OFFSET = 1.0;
 
         private void StartTick()
         {
-            ElapsedTick = 0;
+            TimeElapsed = 0;
 
-            if (TickTimer == null)
+            if (timer == null)
             {
-                TickTimer = new DispatcherTimer();
-                TickTimer.Interval = TICK_INTERVAL;
-                TickTimer.Tick += TickTimer_Tick;
+                timer = new Timer();
+                timer.Interval = 10;
+                timer.Elapsed += Timer_Elapsed;
             }
 
-            if (TickTimer.IsEnabled == false)
+            if (timer.Enabled ==  false)
             {
-                TickTimer.Start();
+                timer.Start();
             }
         }
 
-        private void TickTimer_Tick(object sender, EventArgs e)
+        private void Timer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            ElapsedTick += 0.1;
-            DurationText.Text = ElapsedTick.ToString();
+            TimeElapsed += 0.01;
+
+            if (NextScriptLine==null)
+            {
+                return;
+            }
+
+            this.Dispatcher.BeginInvoke(new Action( 
+                ( ) => 
+                    {
+                        //debugText.Text = TimeElapsed.ToString();
+                        //debugText2.Text = NextScriptLine.Time.ToString();
+                        //debugText3.Text = Media.Position.TotalSeconds.ToString();
+
+                        if (Media.Position.TotalSeconds >= (NextScriptLine.Time - OFFSET))
+                        {
+                            PlayNextScriptLine();
+                        }
+                    } 
+                ), null);
         }
 
         #endregion
 
-        #region mode
+        #region edit mode
 
         bool IsEditMode = true;
 
@@ -463,14 +458,12 @@ namespace LightSpotController
 
             if (IsEditMode)
             {
-                DurationText.Visibility = Visibility.Visible;
                 ScriptPreviewText.Visibility = Visibility.Visible;
                 Buttons.Visibility = Visibility.Visible;
                 Mouse.OverrideCursor = null;
             }
             else
             {
-                DurationText.Visibility = Visibility.Hidden;
                 ScriptPreviewText.Visibility = Visibility.Hidden;
                 Buttons.Visibility = Visibility.Hidden;
                 Mouse.OverrideCursor = Cursors.None;
@@ -480,28 +473,28 @@ namespace LightSpotController
 
         #endregion
 
-        #region media
+        #region audio
 
-        MediaPlayer Player = null;
+        MediaPlayer Media = null;
 
         private void Media_Click(object sender, RoutedEventArgs e)
         {
             System.Windows.Forms.OpenFileDialog ofd = new System.Windows.Forms.OpenFileDialog();
-            ofd.Filter = "MP3 file (*.mp3)|*.mp3|WAV file (*.wav)|*.wav|All files (*.*)|*.*";
+            ofd.Filter = "WAV file (*.wav)|*.wav|MP3 file (*.mp3)|*.mp3|All files (*.*)|*.*";
             ofd.RestoreDirectory = true;
             if (ofd.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                Player = new MediaPlayer();
-                Player.Open(new Uri(ofd.FileName, UriKind.RelativeOrAbsolute));
-                Player.MediaEnded += (ss, ee) =>
+                Media = new MediaPlayer();
+                Media.Open(new Uri(ofd.FileName, UriKind.RelativeOrAbsolute));
+                Media.MediaEnded += (ss, ee) =>
                 {
-                    Player.Position = new TimeSpan(0);
+                    Media.Position = new TimeSpan(0);
+                    PlayScript();
                 };
             }
         }
 
         #endregion
-
 
     }
 

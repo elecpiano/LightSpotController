@@ -6,17 +6,17 @@
         xmlns:local="clr-namespace:LightSpotController"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800" 
-        WindowState="Normal" WindowStyle="None"
+        WindowState="Maximized" WindowStyle="None"
         KeyDown="Window_KeyDown"
         >
-    <Grid>
-        <Image Source="Image/testimg.png" />
-        <Viewbox Opacity="0.7">
-            <Canvas x:Name="SpotCanvas" Width="960" Height="540" Background="DarkGray" MouseLeftButtonDown="Canvas_MouseLeftButtonDown">
-                <Grid x:Name="LightSpot" Width="100" Height="100" Margin="-50,-50,0,0" RenderTransformOrigin="1,1" >
+    <Grid Background="Black">
+        <Image Source="Image/testimg.png" Visibility="Collapsed"/>
+        <Viewbox Opacity="1">
+            <Canvas x:Name="SpotCanvas" Width="960" Height="540" Background="Black" MouseLeftButtonDown="Canvas_MouseLeftButtonDown">
+                <Grid x:Name="LightSpot" Width="100" Height="100" Margin="-50,-50,0,0" RenderTransformOrigin="1,1" Canvas.Left="-99">
                     <Grid.RenderTransform>
                         <TransformGroup>
-                            <TranslateTransform />
+                            <TranslateTransform/>
                         </TransformGroup>
                     </Grid.RenderTransform>
                     <Image x:Name="LightSpot2" RenderTransformOrigin="0.5,0.5" Source="Image/Spot.png" Width="100" Height="100" >
@@ -26,18 +26,22 @@
                             </TransformGroup>
                         </Image.RenderTransform>
                     </Image>
-                    <TextBlock x:Name="DurationText" Text="1.0" FontSize="16" Foreground="Orange"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         <!--Canvas.Left="{Binding (Canvas.Left), ElementName=LightSpot}"
                            Canvas.Top="{Binding (Canvas.Top), ElementName=LightSpot}"/>-->
                 </Grid>
 
-                <TextBlock x:Name="ScriptPreviewText" Text="preview"/>
+                <TextBlock x:Name="ScriptPreviewText" Text="script preview" Foreground="White"/>
 
                 <StackPanel x:Name="Buttons" Canvas.Left="800" Canvas.Top="25" >
-                    <Button Content="Load Script" Click="Load_Click" Focusable="False"/>
-                    <Button Content="Load Media" Click="Media_Click" Focusable="False"/>
-                    <Button Content="Save" Click="Save_Click" Focusable="False"/>
+                    <Button Margin="4" Content="Load Audio" Click="Media_Click" Focusable="False"/>
+                    <Button Margin="4" Content="Load Script" Click="Load_Click" Focusable="False"/>
+                    <Button Margin="4" Content="Save" Click="Save_Click" Focusable="False"/>
+                </StackPanel>
+
+                <StackPanel x:Name="DebugPanel" Canvas.Left="800" Canvas.Top="400" Visibility="Collapsed">
+                    <TextBlock x:Name="debugText" />
+                    <TextBlock x:Name="debugText2" />
+                    <TextBlock x:Name="debugText3" />
                 </StackPanel>
 
             </Canvas>
